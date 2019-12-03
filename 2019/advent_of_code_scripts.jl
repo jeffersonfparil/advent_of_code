@@ -4,13 +4,16 @@
 
 """
 
-
-### day 1 part 1
+##########################################################################################
+##############
+### DAY 01 ###
+##############
+### part 1
 using DelimitedFiles
 input_day01 = DelimitedFiles.readdlm("advent_of_code_day_01.txt", '\t')
 x = input_day01[:, 1]
 solution_01 = sum(floor.(x ./ 3) .- 2)
-### day 1 part 2
+### part 2
 function recursive_fuel_calculation(fuel::Any)::Int64
     total = 0
     remaining = convert(Int64, (floor(fuel / 3)) - 2 )
@@ -21,8 +24,13 @@ function recursive_fuel_calculation(fuel::Any)::Int64
     return(total)
 end
 solution_02 = sum(recursive_fuel_calculation.(x))
+##########################################################################################
 
-### day 2 part 1
+##########################################################################################
+##############
+### DAY 02 ###
+##############
+### part 1
 using DelimitedFiles
 raw_x = convert(Array{Int64, 1}, DelimitedFiles.readdlm("advent_of_code_day_02.csv", ',')[1,:])
 function Intcode_computer(param::Array{Int64,1}, raw_x::Array{Int64,1})::Array{Int64, 1}
@@ -52,8 +60,7 @@ function Intcode_computer(param::Array{Int64,1}, raw_x::Array{Int64,1})::Array{I
     return(out)
 end
 @time out = Intcode_computer([12, 2], raw_x)[1]
-
-### day 2 part 2
+### part 2
 # using Optim
 # function cost(param::Array{Float64,1}, raw_x::Array{Int64,1})::Float64
 #     convert(Float64, abs(19690720 - Intcode_computer(convert(Array{Int64,1}, round.(param)), raw_x)[1]))
@@ -75,3 +82,13 @@ for i in 0:99
     end
 end
 solution_03 = 100 * params[1] + params[2]
+##########################################################################################
+
+##########################################################################################
+##############
+### DAY 03 ###
+##############
+### part 1
+
+### part 2
+##########################################################################################
