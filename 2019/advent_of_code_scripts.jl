@@ -8,22 +8,27 @@
 ##############
 ### DAY 01 ###
 ##############
-### part 1
 using DelimitedFiles
-input_day01 = DelimitedFiles.readdlm("advent_of_code_day_01.txt", '\t')
-x = input_day01[:, 1]
-solution_d1p1 = sum(floor.(x ./ 3) .- 2)
-### part 2
-function recursive_fuel_calculation(fuel::Any)::Int64
-    total = 0
-    remaining = convert(Int64, (floor(fuel / 3)) - 2 )
-    while remaining[1] > 0
-        total += convert(Int64, remaining)
-        remaining = convert(Int64, (floor(remaining / 3)) - 2 )
+function calc_fuel(input)
+    input_day01 = DelimitedFiles.readdlm(input, '\t')
+    ### part 1
+    x = input_day01[:, 1]
+    solution_d1p1 = sum(floor.(x ./ 3) .- 2)
+    ### part 2
+    function recursive_fuel_calculation(fuel::Any)::Int64
+        total = 0
+        remaining = convert(Int64, (floor(fuel / 3)) - 2 )
+        while remaining[1] > 0
+            total += convert(Int64, remaining)
+            remaining = convert(Int64, (floor(remaining / 3)) - 2 )
+        end
+        return(total)
     end
-    return(total)
+    solution_d1p2 = sum(recursive_fuel_calculation.(x))
+    return(solution_d1p1, solution_d1p2)
 end
-solution_d1p2 = sum(recursive_fuel_calculation.(x))
+input = "advent_of_code_day_01.txt"
+@time solution_d1p1, solution_d1p2 = calc_fuel(input)
 ##########################################################################################
 
 ##########################################################################################
@@ -32,7 +37,6 @@ solution_d1p2 = sum(recursive_fuel_calculation.(x))
 ##############
 ### part 1
 using DelimitedFiles
-raw_x = convert(Array{Int64, 1}, DelimitedFiles.readdlm("advent_of_code_day_02.csv", ',')[1,:])
 function Intcode_computer(param::Array{Int64,1}, raw_x::Array{Int64,1})::Array{Int64, 1}
     raw_x[2] = convert(Int64, param[1])
     raw_x[3] = convert(Int64, param[2])
@@ -59,6 +63,7 @@ function Intcode_computer(param::Array{Int64,1}, raw_x::Array{Int64,1})::Array{I
     out = x[1:len_x]
     return(out)
 end
+raw_x = convert(Array{Int64, 1}, DelimitedFiles.readdlm("advent_of_code_day_02.csv", ',')[1,:])
 solution_d2p1 = Intcode_computer([12, 2], raw_x)[1]
 ### part 2
 params = []
@@ -159,11 +164,11 @@ function func_matrixize(X_cumdist, origin, nrows, ncols; stop_x=ncols+1, stop_y=
                 end
             # X[y, x] .= 1
             if length(x) > 1
-                X[y, x] = X[y[1], x] + vcat([0], ones(Int64, length(x)-1))
+                X[y, x] = X[y[1], x] + vcat([0], ones(Int64, length(x)-1)) # exclude origin and corners: 0 in front
             else
-                X[y, x] = X[y, x[1]] + vcat([0], ones(Int64, length(y)-1))
+                X[y, x] = X[y, x[1]] + vcat([0], ones(Int64, length(y)-1)) # exclude origin and corners: 0 in front
             end
-            ### when the intersection if met break!
+            ### when the intersection is met break!
             break
         end
         # X[y, x] .= 1
@@ -251,7 +256,118 @@ solution_d4p2 = length(passwords_2)
 ### DAY 05 ###
 ##############
 ### part 1
+using DelimitedFiles
 
+function modop_parser(x)
+    # x = 1002 # x = 3 # x = 4
+    x_split = parse.(Int64, split(string(x), ""))
+    opcode = try
+                (x_split[end-1] * 10) + x_split[end]
+            catch
+                x_split[1]
+            end
+    modes_init = x_split[1:end-2]
+    if (opcode == 1) | (opcode == 2)
+        immediate = reverse(convert(Array{Int64}, vcat(zeros(3-length(modes_init)), modes_init)))
+        positional = (immediate .== 0) .* [1,1,1]
+        idx = convert(Array{Int64}, collect(1:3))
+    elseif (opcode == 3) | (opcode == 4)
+        immediate = reverse(convert(Array{Int64}, vcat(zeros(1-length(modes_init)), modes_init)))
+        positional = (immediate .== 0) .* [1]
+        idx = [1]
+    elseif opcode == 99
+        immediate = [-999]
+        positional = [-999]
+        idx = [0]
+    else
+        println("Invalid modes-opcode!")
+        immediate = [-999]
+        positional = [-999]
+        idx = [0]
+    end
+    out = (opcode, hcat(idx, immediate, positional))
+    return(out)
+end
+
+function opcode_1_2(opcode, X, program)
+    # opcode = 2
+    # X = reshape([4,3,4, 0,1,0, 1,0,1]', 3, 3)
+    # program = [1002,4,3,4,33]
+    outprog = copy(program)
+    immediate = X[(X[:, 2] .== 1), 1]
+    ### don't forget to add 1 to the positional_idx!!!
+    positional_idx = X[1:2, 1][(X[1:2,3] .== 1)] .+ 1 ### exclude positional output index last row
+    positional = outprog[positional_idx]
+    ouput_positional = X[3,1] .+ 1
+    if opcode == 1
+        outprog[ouput_positional] = try
+                                        immediate[1] + positional[1]
+                                    catch
+                                        sum(immediate) + sum(positional)
+                                    end
+    else
+        outprog[ouput_positional] = try
+                                        immediate[1] * positional[1]
+                                    catch
+                                        prod(immediate) * prod(positional)
+                                    end
+    end
+    return(outprog)
+end
+
+function opcode_3_4(opcode, X, program, input)
+    # opcode = 3
+    # X = reshape([0,0,1]', 1, 3)
+    # X = reshape([255,0,1]', 1, 3)
+    # program = [3,0,4,0,99]
+    # input = 1
+    outprog = copy(program)
+    if opcode == 3
+        ### ALWAYS POSITIONAL
+        ouput_positional = X[1,1] .+ 1
+        outprog[ouput_positional] = input
+        output = NaN
+    else
+        ### POSITIONAL OR IMMEDIATE
+        if X[1,2] == 1 ## immediate
+            output = X[1,1]
+        else
+            output = outprog[X[1,1] .+ 1]
+        end
+    end
+    return(outprog, output)
+end
+
+function Intcode_compuper2(program::Array{Int64,1}, input::Int64)
+    # program = [1002,4,3,4,33]; input = 1 # program = [3,0,4,0,99]; input = 1
+    idx = 1 # idx=3
+    output_vector = []; output_idx = []
+    while idx < length(program)
+        println(idx)
+        opcode, idx_imm_pos = modop_parser(program[idx])
+        values_modes = hcat(program[idx_imm_pos[:,1] .+ idx], idx_imm_pos[:,2], idx_imm_pos[:,3])
+        if (opcode <= 2)
+            program         = opcode_1_2(opcode, values_modes, program)
+            output = NaN
+        elseif (opcode > 2) & (opcode <= 4)
+            program, output = opcode_3_4(opcode, values_modes, program, input)
+        elseif (opcode == 99)
+            break
+        end
+        if !isnan(output)
+            # println(output)
+            push!(output_vector, output)
+            push!(output_idx, idx)
+        end
+        idx = idx + size(idx_imm_pos, 1) + 1
+    end
+    OUTPUT = hcat(output_vector, output_idx)
+    return(OUTPUT)
+end
+
+program = convert(Array{Int64,1}, DelimitedFiles.readdlm("advent_of_code_day_05.csv", ',')[1,:])
+input = 1
+@time output_vector, output_idx = Intcode_compuper2(program, input)
 
 ### part 2
 ##########################################################################################
