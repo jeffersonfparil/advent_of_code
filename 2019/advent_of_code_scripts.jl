@@ -258,7 +258,8 @@ solution_d4p2 = length(passwords_2)
 ### part 1
 using DelimitedFiles
 
-function modop_parser(x)
+function modop_parser(x, idx)
+    # idx = 1
     # x = 1002 # x = 3 # x = 4
     x_split = parse.(Int64, split(string(x), ""))
     opcode = try
@@ -267,107 +268,110 @@ function modop_parser(x)
                 x_split[1]
             end
     modes_init = x_split[1:end-2]
-    if (opcode == 1) | (opcode == 2)
-        immediate = reverse(convert(Array{Int64}, vcat(zeros(3-length(modes_init)), modes_init)))
-        positional = (immediate .== 0) .* [1,1,1]
-        idx = convert(Array{Int64}, collect(1:3))
+    if (opcode == 1) | (opcode == 2) | (opcode == 7) | (opcode == 8)
+        params_length = 3
     elseif (opcode == 3) | (opcode == 4)
-        immediate = reverse(convert(Array{Int64}, vcat(zeros(1-length(modes_init)), modes_init)))
-        positional = (immediate .== 0) .* [1]
-        idx = [1]
+        params_length = 1
+    elseif (opcode == 5) | (opcode == 6)
+        params_length = 2
     elseif opcode == 99
-        immediate = [-999]
-        positional = [-999]
-        idx = [0]
+        params_length = 0
     else
-        println("Invalid modes-opcode!")
-        immediate = [-999]
-        positional = [-999]
-        idx = [0]
+        println("Invalid opcode!")
+        params_length = 0
     end
-    out = (opcode, hcat(idx, immediate, positional))
+    immediate = reverse(convert(Array{Int64,1}, vcat(zeros(params_length-length(modes_init)), modes_init)))
+    positional = (immediate .== 0) .* convert(Array{Int64,1}, ones(params_length))
+    idx_out = convert(Array{Int64}, collect(1:params_length)) .+ idx
+    out = (opcode, hcat(idx_out, immediate, positional))
     return(out)
 end
 
-function opcode_1_2(opcode, X, program)
-    # opcode = 2
-    # X = reshape([4,3,4, 0,1,0, 1,0,1]', 3, 3)
-    # program = [1002,4,3,4,33]
-    outprog = copy(program)
-    immediate = X[(X[:, 2] .== 1), 1]
-    ### don't forget to add 1 to the positional_idx!!!
-    positional_idx = X[1:2, 1][(X[1:2,3] .== 1)] .+ 1 ### exclude positional output index last row
-    positional = outprog[positional_idx]
-    ouput_positional = X[3,1] .+ 1
+function opcode_function(idx, opcode, X, program; input=missing)
+    nrows = size(X,1)
+    params_row_idx = nrows > 1 ? collect(1:nrows-1) : 1
+    params_imm = try;         collect(skipmissing(X[params_row_idx, 1]));       catch;         collect(skipmissing(X[[params_row_idx], 1]));        end
+    params_pos = try; program[collect(skipmissing(X[params_row_idx, 2])) .+ 1]; catch; program[collect(skipmissing(X[[params_row_idx], 2])) .+ 1];  end
+    idx_destin = try; collect(skipmissing(X[nrows, 2]))[1] + 1;                 catch; missing;                                                     end
+    val_destin = try; collect(skipmissing(X[nrows, 1]))[1] + 1;                 catch; missing;                                                     end
+    idx_out = idx + size(X,1) + 1
     if opcode == 1
-        outprog[ouput_positional] = try
-                                        immediate[1] + positional[1]
-                                    catch
-                                        sum(immediate) + sum(positional)
-                                    end
-    else
-        outprog[ouput_positional] = try
-                                        immediate[1] * positional[1]
-                                    catch
-                                        prod(immediate) * prod(positional)
-                                    end
+        out = sum(vcat(params_imm, params_pos))
+    elseif opcode == 2
+        out = prod(vcat(params_imm, params_pos))
+    elseif opcode == 3
+        out = input
+    elseif opcode == 4
+        out = try; program[idx_destin]; catch; params_imm[1]; end
+    elseif opcode == 5
+        out = missing
+        (vcat(params_imm, params_pos)[1] != 0) ? (ismissing(idx_destin)==false) ? idx_out = program[idx_destin] + 1 : idx_out = val_destin : nothing
+    elseif opcode == 6
+        out = missing
+        (vcat(params_imm, params_pos)[1] == 0) ? (ismissing(idx_destin)==false) ? idx_out = program[idx_destin] + 1 : idx_out = val_destin : nothing
+    elseif opcode == 7
+        out = missing
+        .!ismissing.(X[1, 1]) == true ? val1 = params_imm[1] : val1 = params_pos[1]         ### check if the first element of the positional colulmn is not missing
+        .!ismissing.(X[2, 1]) == true ? val2 = params_imm[end] : val2 = params_pos[end]     ### check if the second element of the positional column is not missing
+        val1 < val2 ? out = 1 : out = 0
+    elseif opcode == 8
+        out = missing
+        .!ismissing.(X[1, 1]) == true ? val1 = params_imm[1] : val1 = params_pos[1]         ### check if the first element of the positional colulmn is not missing
+        .!ismissing.(X[2, 1]) == true ? val2 = params_imm[end] : val2 = params_pos[end]     ### check if the second element of the positional column is not missing
+        val1 == val2 ? out = 1 : out = 0
     end
-    return(outprog)
-end
-
-function opcode_3_4(opcode, X, program, input)
-    # opcode = 3
-    # X = reshape([0,0,1]', 1, 3)
-    # X = reshape([255,0,1]', 1, 3)
-    # program = [3,0,4,0,99]
-    # input = 1
-    outprog = copy(program)
-    if opcode == 3
-        ### ALWAYS POSITIONAL
-        ouput_positional = X[1,1] .+ 1
-        outprog[ouput_positional] = input
-        output = NaN
-    else
-        ### POSITIONAL OR IMMEDIATE
-        if X[1,2] == 1 ## immediate
-            output = X[1,1]
-        else
-            output = outprog[X[1,1] .+ 1]
-        end
-    end
-    return(outprog, output)
+    try; program[idx_destin] = out; catch; nothing; end
+    return(program, out, idx_out)
 end
 
 function Intcode_compuper2(program::Array{Int64,1}, input::Int64)
-    # program = [1002,4,3,4,33]; input = 1 # program = [3,0,4,0,99]; input = 1
+    # program = [1002,4,3,4,33]; input = 1 # program = [3,0,4,0,99]; input = 1 # program = [104,0,1101,65,73,225]; input = 1
+    # program = [3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9]; input = 0
+    # program = [3,3,1105,-1,9,1101,0,0,12,4,12,99,1]; input = 1
     idx = 1 # idx=3
     output_vector = []; output_idx = []
     while idx < length(program)
         println(idx)
-        opcode, idx_imm_pos = modop_parser(program[idx])
-        values_modes = hcat(program[idx_imm_pos[:,1] .+ idx], idx_imm_pos[:,2], idx_imm_pos[:,3])
-        if (opcode <= 2)
-            program         = opcode_1_2(opcode, values_modes, program)
-            output = NaN
-        elseif (opcode > 2) & (opcode <= 4)
-            program, output = opcode_3_4(opcode, values_modes, program, input)
-        elseif (opcode == 99)
-            break
+        opcode, idx_imm_pos = modop_parser(program[idx], idx)
+        opcode == 99 ? break : nothing
+        values = hcat(program[idx_imm_pos[:,1]], program[idx_imm_pos[:,1]])
+        imm_pos = convert(Array{Any,2}, idx_imm_pos[:,2:3]); imm_pos[imm_pos .== 0] .= missing
+        X = values .* imm_pos
+        program, out, idx_out = opcode_function(idx, opcode, X, program, input=input)
+        if (opcode == 1) | (opcode == 2) | (opcode == 3)
+            out = missing
         end
-        if !isnan(output)
-            # println(output)
-            push!(output_vector, output)
+        if ismissing(out) == false
+            push!(output_vector, out)
             push!(output_idx, idx)
         end
-        idx = idx + size(idx_imm_pos, 1) + 1
+        idx = idx_out
     end
-    OUTPUT = hcat(output_vector, output_idx)
+    println("Outputting!")
+    OUTPUT = hcat(output_idx, output_vector)
     return(OUTPUT)
 end
 
 program = convert(Array{Int64,1}, DelimitedFiles.readdlm("advent_of_code_day_05.csv", ',')[1,:])
 input = 1
-@time output_vector, output_idx = Intcode_compuper2(program, input)
+@time solution_d5p1 = Intcode_compuper2(program, input)
+
+### part 2
+program = convert(Array{Int64,1}, DelimitedFiles.readdlm("advent_of_code_day_05.csv", ',')[1,:])
+input = 5
+@time solution_d5p2 = Intcode_compuper2(program, input)
+##########################################################################################
+
+##########################################################################################
+##############
+### DAY 06 ###
+##############
+### part 1
+using DelimitedFiles
+input = convert(Array{String,2}, string.(DelimitedFiles.readdlm("advent_of_code_day_06.psv", ')'))) ### parentheis-separated-values: "*.psv"
+# input = permutedims(reshape(["COM","B","B","C","C","D","D","E","E","F","B","G","G","H","D","I","E","J","J","K","K","L"], 2, 11))
+
+
 
 ### part 2
 ##########################################################################################
