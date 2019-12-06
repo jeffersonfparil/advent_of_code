@@ -370,8 +370,62 @@ input = 5
 using DelimitedFiles
 input = convert(Array{String,2}, string.(DelimitedFiles.readdlm("advent_of_code_day_06.psv", ')'))) ### parentheis-separated-values: "*.psv"
 # input = permutedims(reshape(["COM","B","B","C","C","D","D","E","E","F","B","G","G","H","D","I","E","J","J","K","K","L"], 2, 11))
+branch_nodes = unique(input[:,1])
+attached_nodes = unique(input[:,2])
+terminal_nodes = collect(skipmissing([sum(branch_nodes .== x) == 0 ? x : missing for x in attached_nodes]))
 
+branch_lines_list = []
+for i in terminal_nodes
+    # i = terminal_nodes[1]
+    branch_line = reverse(input[input[:,2] .== i, :][1,:])
+    while branch_line[end] != "COM"
+        push!(branch_line, input[input[:,2] .== branch_line[end], :][1,1])
+    end
+    append!(branch_lines_list, [reverse(branch_line)])
+end
+branch_lines_list = branch_lines_list[sortperm(length.(branch_lines_list))]
 
+out = []
+for i in 1:length(branch_lines_list)
+    # i = 2
+    nodes = branch_lines_list[i]
+    nedges = length(nodes)-1
+    if i == 1
+        push!(out, sum(collect(1:nedges)))
+    else
+        prev_nodes = unique(vcat(branch_lines_list[1:i-1]...))
+        nrepeats = sum([sum(nodes .== x)>0 for x in prev_nodes])
+        push!(out, sum(collect((nrepeats):nedges)))
+    end
+end
+solution_d6p1 = sum(out)
 
 ### part 2
+### Since both "YOU" and "SAN" are terminal nodes:
+(sum(terminal_nodes .== "YOU") == 1) & (sum(terminal_nodes .== "SAN") == 1)
+### Then:
+YOU_PATH = vcat(collect(skipmissing([x[end] == "YOU" ? x : missing for x in branch_lines_list]))...)
+SAN_PATH = vcat(collect(skipmissing([x[end] == "SAN" ? x : missing for x in branch_lines_list]))...)
+
+common_node = collect(skipmissing([x==y ? x : missing for x in YOU_PATH for y in SAN_PATH]))[end]
+
+you_transfer_nodes = []
+for i in reverse(YOU_PATH)
+    push!(you_transfer_nodes, i)
+    if i == common_node
+        break
+    end
+end
+
+san_transfer_nodes = []
+for i in reverse(SAN_PATH)
+    push!(san_transfer_nodes, i)
+    if i == common_node
+        break
+    end
+end
+
+solution_d6p2 = (length(you_transfer_nodes)-2) + (length(san_transfer_nodes)-2)
+
+
 ##########################################################################################
