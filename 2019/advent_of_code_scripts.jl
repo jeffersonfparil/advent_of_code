@@ -432,6 +432,8 @@ solution_d6p2 = (length(you_transfer_nodes)-2) + (length(san_transfer_nodes)-2)
 ##############
 ### DAY 07 ###
 ##############
+using DelimitedFiles
+
 function modop_parser(x, idx)
     # idx = 1
     # x = 1002 # x = 3 # x = 4
@@ -532,23 +534,23 @@ function Intcode_compuper2(program::Array{Int64,1}, input_vec::Array{Int64,1})
     return(OUTPUT)
 end
 
-using DelimitedFiles
+# program = [3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0]
+# phases_combi = [4,3,2,1,0]
+# program = [3,23,3,24,1002,24,10,24,1002,23,-1,23,101,5,23,23,1,24,23,23,4,23,99,0,0]
+# phases_combi = [0,1,2,3,4]
+# program = [3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0]
+# phases_combi = [1,0,4,3,2]
+
 program = convert(Array{Int64,1}, DelimitedFiles.readdlm("advent_of_code_day_07.csv", ',')[1, :])
-PHASE_COMBI = []
+PHASES_COMBI = []
+for i in collect(0:4)
+    for j in 
+OUT = []
 
-program = [3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0]
-PHASE_COMBI = [4,3,2,1,0]
-
-program = [3,23,3,24,1002,24,10,24,1002,23,-1,23,101,5,23,23,1,24,23,23,4,23,99,0,0]
-PHASE_COMBI = [0,1,2,3,4]
-
-program = [3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0]
-PHASE_COMBI = [1,0,4,3,2]
-
-
+phases_combi = []
 program_copy = copy(program)
 out = [0]
-for phase in PHASE_COMBI
+for phase in phases_combi
     # phase = 4 # phase = 3
     push!(out, Intcode_compuper2(program_copy, [phase, out[end]])[end, 2])
 end
