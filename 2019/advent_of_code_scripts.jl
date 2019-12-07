@@ -508,21 +508,22 @@ function Intcode_compuper2(program::Array{Int64,1}, input_vec::Array{Int64,1})
     # program = [3,3,1105,-1,9,1101,0,0,12,4,12,99,1]; input = 1
     idx = [1] # idx=3
     output_vector = []; output_idx = []
-    first_opcode3 = [0]
+    first_opcode3 = [true]
     while idx[1] < length(program)
-        println(idx)
+        println(idx[1])
         opcode, idx_imm_pos = modop_parser(program[idx[1]], idx[1])
         opcode == 99 ? break : nothing
         values = hcat(program[idx_imm_pos[:,1]], program[idx_imm_pos[:,1]])
         imm_pos = convert(Array{Any,2}, idx_imm_pos[:,2:3]); imm_pos[imm_pos .== 0] .= missing
         X = values .* imm_pos
-        if first_opcode3[1] == 0
-            program, out, idx_out = opcode_function(idx[1], opcode, X, program, input=input_vec[1])
-            first_opcode3[1] = 1
+        if first_opcode3[1] & ((opcode == 3) | (opcode == 4))
+            input = input_vec[1]
+            first_opcode3[1] = false
             println(string("##*#*#*#*#*#*#*-->>>>", first_opcode3[1]))
         else
-            program, out, idx_out = opcode_function(idx[1], opcode, X, program, input=input_vec[2])
+            input = input_vec[2]
         end
+        program, out, idx_out = opcode_function(idx[1], opcode, X, program, input=input)
         if (opcode == 1) | (opcode == 2) | (opcode == 3)
             out = missing
         end
@@ -589,12 +590,13 @@ OUT = []
 for phases_combi in convert(Array{Array{Int64,1}}, PHASES_COMBI)
     # phases_combi = convert(Array{Array{Int64,1}}, PHASES_COMBI)[1]
     program_copy = convert(Array{Int64,1}, copy(program))
-    out = [0]; test = 1
-    while test == 1
+    out = [0]; test = true
+    while test
         try 
             for phase in phases_combi
                 # phase = phases_combi[1]
-                push!(out, Intcode_compuper2(program_copy, convert(Array{Int64,1}, [phase, out[end]]))[end, 2])
+                intcode = Intcode_compuper2(program_copy, convert(Array{Int64,1}, [phase, out[end]]))
+                push!(out, intcode[end, 2])
                 if phase == phases_combi[end]
                     push!(out, phase)
                 end
@@ -602,9 +604,10 @@ for phases_combi in convert(Array{Array{Int64,1}}, PHASES_COMBI)
             push!(OUT, out[end-1])
         catch
             prinln("END!")
-            test = 0
+            test = false
         end
     end
 end
 
 ##########################################################################################
+    
