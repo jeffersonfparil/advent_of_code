@@ -426,6 +426,133 @@ for i in reverse(SAN_PATH)
 end
 
 solution_d6p2 = (length(you_transfer_nodes)-2) + (length(san_transfer_nodes)-2)
+##########################################################################################
+
+##########################################################################################
+##############
+### DAY 07 ###
+##############
+function modop_parser(x, idx)
+    # idx = 1
+    # x = 1002 # x = 3 # x = 4
+    x_split = parse.(Int64, split(string(x), ""))
+    opcode = try
+                (x_split[end-1] * 10) + x_split[end]
+            catch
+                x_split[1]
+            end
+    modes_init = x_split[1:end-2]
+    if (opcode == 1) | (opcode == 2) | (opcode == 7) | (opcode == 8)
+        params_length = 3
+    elseif (opcode == 3) | (opcode == 4)
+        params_length = 1
+    elseif (opcode == 5) | (opcode == 6)
+        params_length = 2
+    elseif opcode == 99
+        params_length = 0
+    else
+        println("Invalid opcode!")
+        params_length = 0
+    end
+    immediate = reverse(convert(Array{Int64,1}, vcat(zeros(params_length-length(modes_init)), modes_init)))
+    positional = (immediate .== 0) .* convert(Array{Int64,1}, ones(params_length))
+    idx_out = convert(Array{Int64}, collect(1:params_length)) .+ idx
+    out = (opcode, hcat(idx_out, immediate, positional))
+    return(out)
+end
+
+function opcode_function(idx, opcode, X, program; input=missing)
+    nrows = size(X,1)
+    params_row_idx = nrows > 1 ? collect(1:nrows-1) : 1
+    params_imm = try;         collect(skipmissing(X[params_row_idx, 1]));       catch;         collect(skipmissing(X[[params_row_idx], 1]));        end
+    params_pos = try; program[collect(skipmissing(X[params_row_idx, 2])) .+ 1]; catch; program[collect(skipmissing(X[[params_row_idx], 2])) .+ 1];  end
+    idx_destin = try; collect(skipmissing(X[nrows, 2]))[1] + 1;                 catch; missing;                                                     end
+    val_destin = try; collect(skipmissing(X[nrows, 1]))[1] + 1;                 catch; missing;                                                     end
+    idx_out = idx + size(X,1) + 1
+    if opcode == 1
+        out = sum(vcat(params_imm, params_pos))
+    elseif opcode == 2
+        out = prod(vcat(params_imm, params_pos))
+    elseif opcode == 3
+        out = input
+    elseif opcode == 4
+        out = try; program[idx_destin]; catch; params_imm[1]; end
+    elseif opcode == 5
+        out = missing
+        (vcat(params_imm, params_pos)[1] != 0) ? (ismissing(idx_destin)==false) ? idx_out = program[idx_destin] + 1 : idx_out = val_destin : nothing
+    elseif opcode == 6
+        out = missing
+        (vcat(params_imm, params_pos)[1] == 0) ? (ismissing(idx_destin)==false) ? idx_out = program[idx_destin] + 1 : idx_out = val_destin : nothing
+    elseif opcode == 7
+        out = missing
+        .!ismissing.(X[1, 1]) == true ? val1 = params_imm[1] : val1 = params_pos[1]         ### check if the first element of the positional colulmn is not missing
+        .!ismissing.(X[2, 1]) == true ? val2 = params_imm[end] : val2 = params_pos[end]     ### check if the second element of the positional column is not missing
+        val1 < val2 ? out = 1 : out = 0
+    elseif opcode == 8
+        out = missing
+        .!ismissing.(X[1, 1]) == true ? val1 = params_imm[1] : val1 = params_pos[1]         ### check if the first element of the positional colulmn is not missing
+        .!ismissing.(X[2, 1]) == true ? val2 = params_imm[end] : val2 = params_pos[end]     ### check if the second element of the positional column is not missing
+        val1 == val2 ? out = 1 : out = 0
+    end
+    try; program[idx_destin] = out; catch; nothing; end
+    return(program, out, idx_out)
+end
+
+function Intcode_compuper2(program::Array{Int64,1}, input_vec::Array{Int64,1})
+    # program = [1002,4,3,4,33]; input = 1 # program = [3,0,4,0,99]; input = 1 # program = [104,0,1101,65,73,225]; input = 1
+    # program = [3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9]; input = 0
+    # program = [3,3,1105,-1,9,1101,0,0,12,4,12,99,1]; input = 1
+    idx = 1 # idx=3
+    output_vector = []; output_idx = []
+    first_opcode3 = 0
+    while idx < length(program)
+        println(idx)
+        opcode, idx_imm_pos = modop_parser(program[idx], idx)
+        opcode == 99 ? break : nothing
+        values = hcat(program[idx_imm_pos[:,1]], program[idx_imm_pos[:,1]])
+        imm_pos = convert(Array{Any,2}, idx_imm_pos[:,2:3]); imm_pos[imm_pos .== 0] .= missing
+        X = values .* imm_pos
+        if first_opcode3 == 0
+            program, out, idx_out = opcode_function(idx, opcode, X, program, input=input_vec[1])
+            first_opcode3 = 1
+        else
+            program, out, idx_out = opcode_function(idx, opcode, X, program, input=input_vec[2])
+        end
+        if (opcode == 1) | (opcode == 2) | (opcode == 3)
+            out = missing
+        end
+        if ismissing(out) == false
+            push!(output_vector, out)
+            push!(output_idx, idx)
+        end
+        idx = idx_out
+    end
+    println("Outputting!")
+    OUTPUT = hcat(output_idx, output_vector)
+    return(OUTPUT)
+end
+
+using DelimitedFiles
+program = convert(Array{Int64,1}, DelimitedFiles.readdlm("advent_of_code_day_07.csv", ',')[1, :])
+PHASE_COMBI = []
+
+program = [3,15,3,16,1002,16,10,16,1,16,15,15,4,15,99,0,0]
+PHASE_COMBI = [4,3,2,1,0]
+
+program = [3,23,3,24,1002,24,10,24,1002,23,-1,23,101,5,23,23,1,24,23,23,4,23,99,0,0]
+PHASE_COMBI = [0,1,2,3,4]
+
+program = [3,31,3,32,1002,32,10,32,1001,31,-2,31,1007,31,0,33,1002,33,7,33,1,33,31,31,1,32,31,31,4,31,99,0,0,0]
+PHASE_COMBI = [1,0,4,3,2]
+
+
+program_copy = copy(program)
+out = [0]
+for phase in PHASE_COMBI
+    # phase = 4 # phase = 3
+    push!(out, Intcode_compuper2(program_copy, [phase, out[end]])[end, 2])
+end
+out
 
 
 ##########################################################################################
