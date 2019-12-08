@@ -433,7 +433,7 @@ solution_d6p2 = (length(you_transfer_nodes)-2) + (length(san_transfer_nodes)-2)
 ### DAY 07 ###
 ##############
 
-### Problem 1
+### part 1
 using DelimitedFiles
 
 function modop_parser(x, idx)
@@ -569,10 +569,11 @@ end
 OUT = []
 for phases_combi in convert(Array{Array{Int64,1}}, PHASES_COMBI)
     # phases_combi = convert(Array{Array{Int64,1}}, PHASES_COMBI)[1]
-    program_copy = convert(Array{Int64,1}, copy(program))
+    # program_copy = convert(Array{Int64,1}, copy(program))
     out = [0]
     for phase in phases_combi
         # phase = 4 # phase = 3
+        program_copy = convert(Array{Int64,1}, copy(program))
         push!(out, Intcode_compuper2(program_copy, [phase, out[end]])[end, 2])
     end
     push!(OUT, out[end])
@@ -580,34 +581,135 @@ end
 #hcat(PHASES_COMBI, OUT)
 solution_d7p1 = maximum(OUT)
 
+### part 2
 
+function Intcode_compuper2(program::Array{Int64,1}, input_vec::Array{Int64,1})
+    # program = [1002,4,3,4,33]; input = 1 # program = [3,0,4,0,99]; input = 1 # program = [104,0,1101,65,73,225]; input = 1
+    # program = [3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9]; input = 0
+    # program = [3,3,1105,-1,9,1101,0,0,12,4,12,99,1]; input = 1
+    idx = [1] # idx=3
+    output_vector = []; output_idx = []
+    first_opcode3 = [true]
+    while idx[1] < length(program)
+        println(idx[1])
+        opcode, idx_imm_pos = modop_parser(program[idx[1]], idx[1])
+        opcode == 99 ? break : nothing
+        values = hcat(program[idx_imm_pos[:,1]], program[idx_imm_pos[:,1]])
+        imm_pos = convert(Array{Any,2}, idx_imm_pos[:,2:3]); imm_pos[imm_pos .== 0] .= missing
+        X = values .* imm_pos
+        if first_opcode3[1] & ((opcode == 3) | (opcode == 4))
+            input = input_vec[1]
+            first_opcode3[1] = false
+            println(string("##*#*#*#*#*#*#*-->>>>", first_opcode3[1]))
+        else
+            input = input_vec[2]
+        end
+        program, out, idx_out = opcode_function(idx[1], opcode, X, program, input=input)
+        if (opcode == 1) | (opcode == 2) | (opcode == 3)
+            out = missing
+        end
+        if ismissing(out) == false
+            push!(output_vector, out)
+            push!(output_idx, idx[1])
+        end
+        idx[1] = idx_out
+    end
+    println("Outputting!")
+    OUTPUT = hcat(output_idx, output_vector)
+    return(OUTPUT)
+end
 
-
-### Problem 2
 program = [3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5]
 PHASES_COMBI = [[9,8,7,6,5]]
 OUT = []
 for phases_combi in convert(Array{Array{Int64,1}}, PHASES_COMBI)
     # phases_combi = convert(Array{Array{Int64,1}}, PHASES_COMBI)[1]
-    program_copy = convert(Array{Int64,1}, copy(program))
-    out = [0]; test = true
+    test = true
+
+    program_COPIES_5_AMPS = [convert(Array{Int64,1}, copy(program)),
+                             convert(Array{Int64,1}, copy(program)),
+                             convert(Array{Int64,1}, copy(program)),
+                             convert(Array{Int64,1}, copy(program)),
+                             convert(Array{Int64,1}, copy(program))]
+    out_5_AMPS = [[0], [], [], [], []]
+
     while test
-        try 
-            for phase in phases_combi
-                # phase = phases_combi[1]
+        try
+            for i in 1:5
+                # i = 1
+                phase = phases_combi[i]
+                program_copy = program_COPIES_5_AMPS[i]
+                out = out_5_AMPS[i]
                 intcode = Intcode_compuper2(program_copy, convert(Array{Int64,1}, [phase, out[end]]))
-                push!(out, intcode[end, 2])
-                if phase == phases_combi[end]
-                    push!(out, phase)
-                end
+                push!(out[i+1], intcode[end, 2])
             end
-            push!(OUT, out[end-1])
+            push!(OUT, out[end])
         catch
             prinln("END!")
             test = false
         end
     end
 end
+##########################################################################################
+
 
 ##########################################################################################
-    
+##############
+### DAY 08 ###
+##############
+### part 1
+using DelimitedFiles
+input = split(DelimitedFiles.readdlm("advent_of_code_day_08.txt", '\t')[1,1], "")
+nrows = 6
+ncols = 25
+nLayers = convert(Int64, length(input) / (nrows * ncols))
+VCATTED_LAYERS = reshape(parse.(Int64, input), ncols, nrows*nLayers)'
+nZeros = []
+nOnes = []
+nTwos = []
+for i in 1:nLayers
+    # i = 1
+    X = VCATTED_LAYERS[((nrows*(i-1))+1):(nrows*i), :]
+    push!(nZeros, sum(X .== 0))
+    push!(nOnes, sum(X .== 1))
+    push!(nTwos, sum(X .== 2))
+end
+solution_d8p1 = nOnes[minimum(nZeros) .== nZeros] .* nTwos[minimum(nZeros) .== nZeros]
+
+### part 2
+input = split(DelimitedFiles.readdlm("advent_of_code_day_08.txt", '\t')[1,1], "")
+nrows = 6
+ncols = 25
+nLayers = convert(Int64, length(input) / (nrows * ncols))
+# input = split("0222112222120000", "")
+# nrows = 2
+# ncols=2
+# nLayers = convert(Int64, length(input) / (nrows * ncols))
+X = reshape(parse.(Int64, input), ncols, nrows, nLayers)
+OUT = convert(Array{Int64,2}, ones(nrows, ncols) .* 2)
+for i in 1:nrows
+    for j in 1:ncols
+        k = 1
+        while k <= nLayers
+            println(string("i=", i))
+            println(string("j=", j))
+            println(string("k=", k))
+            if (X[j,i,k] == 0) | (X[j,i,k] == 1)
+                OUT[i,j] = X[j,i,k]
+                k = nLayers + 1
+            else
+                k += 1
+            end
+        end
+    end
+end
+solution_d8p2 = OUT ### READ ME!!! SQUINT A BIT HAHAHA BCPZB!
+##########################################################################################
+
+##########################################################################################
+##############
+### DAY 09 ###
+##############
+### part 1
+### part 2
+##########################################################################################
