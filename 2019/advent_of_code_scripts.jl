@@ -569,7 +569,6 @@ end
 OUT = []
 for phases_combi in convert(Array{Array{Int64,1}}, PHASES_COMBI)
     # phases_combi = convert(Array{Array{Int64,1}}, PHASES_COMBI)[1]
-    # program_copy = convert(Array{Int64,1}, copy(program))
     out = [0]
     for phase in phases_combi
         # phase = 4 # phase = 3
@@ -589,7 +588,11 @@ function Intcode_compuper2(program::Array{Int64,1}, input_vec::Array{Int64,1})
     # program = [3,3,1105,-1,9,1101,0,0,12,4,12,99,1]; input = 1
     idx = [1] # idx=3
     output_vector = []; output_idx = []
-    first_opcode3 = [true]
+    if length(input_vec) == 2
+        first_opcode3 = [true]
+    else
+        first_opcode3 = [false]
+    end
     while idx[1] < length(program)
         println(idx[1])
         opcode, idx_imm_pos = modop_parser(program[idx[1]], idx[1])
@@ -602,7 +605,7 @@ function Intcode_compuper2(program::Array{Int64,1}, input_vec::Array{Int64,1})
             first_opcode3[1] = false
             println(string("##*#*#*#*#*#*#*-->>>>", first_opcode3[1]))
         else
-            input = input_vec[2]
+            input = input_vec[end]
         end
         program, out, idx_out = opcode_function(idx[1], opcode, X, program, input=input)
         if (opcode == 1) | (opcode == 2) | (opcode == 3)
@@ -621,31 +624,48 @@ end
 
 program = [3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5]
 PHASES_COMBI = [[9,8,7,6,5]]
-OUT = []
+program_COPIES_5_AMPS = [convert(Array{Int64,1}, copy(program)),
+                         convert(Array{Int64,1}, copy(program)),
+                         convert(Array{Int64,1}, copy(program)),
+                         convert(Array{Int64,1}, copy(program)),
+                         convert(Array{Int64,1}, copy(program))]
+
+
 for phases_combi in convert(Array{Array{Int64,1}}, PHASES_COMBI)
     # phases_combi = convert(Array{Array{Int64,1}}, PHASES_COMBI)[1]
+    input_amp1 = output_amp5 = [phases_combi[1], 0]
+    input_amp2 = output_amp1 = [phases_combi[2]]
+    input_amp3 = output_amp2 = [phases_combi[3]]
+    input_amp4 = output_amp3 = [phases_combi[4]]
+    input_amp5 = output_amp4 = [phases_combi[5]]
+    input_5_AMPS = [input_amp1,
+                    input_amp2,
+                    input_amp3,
+                    input_amp4,
+                    input_amp5]
+    output_5_AMPS = [output_amp1,
+                     output_amp2,
+                     output_amp3,
+                     output_amp4,
+                     output_amp5]
     test = true
-
-    program_COPIES_5_AMPS = [convert(Array{Int64,1}, copy(program)),
-                             convert(Array{Int64,1}, copy(program)),
-                             convert(Array{Int64,1}, copy(program)),
-                             convert(Array{Int64,1}, copy(program)),
-                             convert(Array{Int64,1}, copy(program))]
-    out_5_AMPS = [[0], [], [], [], []]
-
+    cycle_counter = [0]
     while test
         try
             for i in 1:5
                 # i = 1
-                phase = phases_combi[i]
-                program_copy = program_COPIES_5_AMPS[i]
-                out = out_5_AMPS[i]
-                intcode = Intcode_compuper2(program_copy, convert(Array{Int64,1}, [phase, out[end]]))
-                push!(out[i+1], intcode[end, 2])
+                if cycle_counter[1] == 0
+                    input_vec = input_5_AMPS[i][end-1:end]
+                else
+                    input_vec = [input_5_AMPS[i][end]]
+                end
+                intcode = Intcode_compuper2(program_COPIES_5_AMPS[i], input_vec)
+                push!(output_5_AMPS[i], intcode[end, 2])
             end
+            cycle_counter[1]  = cycle_counter[1] + 1
             push!(OUT, out[end])
         catch
-            prinln("END!")
+            println("END!")
             test = false
         end
     end
