@@ -15,7 +15,7 @@ for (i in 1:nrow(dat)){
 sum((vec_cnt >= vec_min) & (vec_cnt <=vec_max))
 
 
-# aoc-2020-02.1
+# aoc-2020-02.2
 dat = read.delim("aoc-2020-02.txt", sep=" ", header=FALSE)
 vec_min = as.numeric(matrix(unlist(strsplit(as.character(dat$V1), "-")), ncol=2, byrow=TRUE)[,1])
 vec_max = as.numeric(matrix(unlist(strsplit(as.character(dat$V1), "-")), ncol=2, byrow=TRUE)[,2])
