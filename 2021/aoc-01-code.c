@@ -30,11 +30,25 @@ void freeArray(Array *a) {
   a->used = a->size = 0;
 }
 
+typedef struct {
+  int sca_1;
+  int sca_2;
+  int sca_3;
+} Trio;
+
+void updateTrio(Trio* T, int element){
+ T->sca_1 = T->sca_2;
+ T->sca_2 = T->sca_3;
+ T->sca_3 = element;
+}
 
 int main(int argc, char* argv[])
 {
-    char const* const fileName = argv[1]; // should check that argc > 1
-    FILE* file = fopen(fileName, "r"); /* should check the result */
+    ///////////////////////////////////////////
+    /// Part 1
+    ///////////////////////////////////////////
+    char const* const fileName = argv[1];
+    FILE* file = fopen(fileName, "r");
     
     int lineSize = 1024; 
     char line[lineSize];
@@ -43,15 +57,9 @@ int main(int argc, char* argv[])
     int current;
 
     Array a;
-
     initArray(&a, 5);  // initially 5 elements
 
     while (fgets(line, sizeof(line), file)) {
-        /* note that fgets don't strip the terminating \n, checking its
-           presence would allow to handle lines longer that sizeof(line) */
-
-        // print string
-        // printf("%s", line);
         // type cast from string to int
         current = atoi(line);
         // printf("%i\n", current);
@@ -61,20 +69,9 @@ int main(int argc, char* argv[])
         }
         previous = current;
     }
-    /* may check feof here to make a difference between eof and io failure -- network
-       timeout for instance */
 
-    // free(copy);
-    // copy = NULL;
-
-    fclose(file);
 
     // count the number of elements in the array
-    // int out = sizeof(a.array) / sizeof(a.array[0]);
-    // printf("%i\n", out);
-    // for (int i; i<100; i++){
-    //     printf("%i\n", a.array[i]);
-    // }
     int i=0;
     int length=0;
     while (a.array[i] != '\0'){
@@ -82,8 +79,78 @@ int main(int argc, char* argv[])
         length=length+1;
     }
     int out = length - 1;
+    printf("##############################################\n");
+    printf("Part 1:\n");
     printf("%i\n", out);
+    printf("##############################################\n");
+
+    // free array memory
+    fclose(file);
+    freeArray(&a);
+
+    ///////////////////////////////////////////
+    /// Part 2
+    //////////////////////////////////////////
+    FILE* file2 = fopen(fileName, "r");
+    Array b;
+    initArray(&b, 1); // initialise with just 1 element because why not eh?!
+    Trio Trio_previous;
+    Trio Trio_current;
+    Trio_previous.sca_1 = -1;
+    Trio_previous.sca_2 = -1;
+    Trio_previous.sca_3 = -1;
+    Trio_current.sca_1 = -1;
+    Trio_current.sca_2 = -1;
+    Trio_current.sca_3 = -1;
+
+    i = 0;
+
+    int sum_Trio_previous;
+    int sum_Trio_current;
+
+    while (fgets(line, sizeof(line), file2)) {
+        current = atoi(line);
+
+        // fill-up Trio_previous first
+        if (Trio_previous.sca_1 == -1){
+          updateTrio(&Trio_previous, current);
+        } else if (i > 3) {
+          Trio_previous = Trio_current;
+        }
+        // fill-up Trio_current one index after the first line of the input file
+        if (i > 0){
+          updateTrio(&Trio_current, current);
+        }
+        if (i >= 3){
+          sum_Trio_previous = Trio_previous.sca_1 + Trio_previous.sca_2 + Trio_previous.sca_3;
+          sum_Trio_current = Trio_current.sca_1 + Trio_current.sca_2 + Trio_current.sca_3;
+          if (sum_Trio_current > sum_Trio_previous) {
+              insertArray(&b, current);
+          }
+        }
+      i++;
+    }
+
+    i = 0;
+    length=0;
+    while (b.array[i] != '\0'){
+        i = i + 1;
+        length=length+1;
+    }
+    out = length;
+    printf("##############################################\n");
+    printf("Part 2:\n");
+    printf("%i\n", out);
+    printf("##############################################\n");
+
+    freeArray(&a);
+    fclose(file2);
+
 
     return 0;
 }
 
+// **Compile:**
+// gcc aoc-01-code.c -o aoc-01-code
+// **Execute:**
+// time ./aoc-01-code aoc-01-input.txt
