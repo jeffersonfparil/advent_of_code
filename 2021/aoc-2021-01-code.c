@@ -151,6 +151,6 @@ int main(int argc, char* argv[])
 }
 
 // **Compile:**
-// gcc aoc-01-code.c -o aoc-01-code
+// gcc aoc-2021-01-code.c -o aoc-2021-01
 // **Execute:**
-// time ./aoc-01-code aoc-01-input.txt
+// time ./aoc-2021-01 aoc-2021-01-input.txt

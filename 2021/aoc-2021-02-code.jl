@@ -45,7 +45,7 @@ navigation_elves_right = function(fname)
 end
 
 ### **Execute:**
-fname = "aoc-02-input.txt"
+fname = "aoc-2021-02-input.txt"
 @time navigation_elves_wrong(fname)
 @time navigation_elves_wrong(fname)
 
@@ -53,4 +53,4 @@ fname = "aoc-02-input.txt"
 @time navigation_elves_right(fname)
 
 # ### **In bash:**
-# time julia aoc-02-code.jl
+# time julia aoc-2021-02-code.jl
