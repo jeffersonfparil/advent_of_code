@@ -14,7 +14,6 @@ find_power_consumption = function(fname)
     println("#####################################")
 end
 
-
 find_the_row = function(X; CO2=false)
     n_rows, n_cols = size(X)
     idx_col = 1
