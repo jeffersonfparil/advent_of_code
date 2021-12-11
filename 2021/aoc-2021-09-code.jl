@@ -8,6 +8,11 @@ end
 
 fun_crawl_recursive = function(x, y, X, X_map)
     n, m = size(X)
+    ### If we haven't reached the edge yet keep appending 1 into X_map,
+    ### and also keep going up, down, left, and right,
+    ### as long as X[x,y] is a basin and X_map[x,y] has not been mapped yet,
+    ### i.e. X_map[x,y]==0;
+    ### otherwise spit out X_map.
     if (x > 0) & (y > 0) & (x <= n) & (y <= m)
          if (X[x, y] == 1) & (X_map[x, y]==0)
              X_map[x, y] =  1
