@@ -6,15 +6,15 @@ fun_parser = function(fname)
     return(mat_heightmap)
 end
 
-fun_crawl = function(x, y, X, X_map)
+fun_crawl_recursive = function(x, y, X, X_map)
     n, m = size(X)
     if (x > 0) & (y > 0) & (x <= n) & (y <= m)
          if (X[x, y] == 1) & (X_map[x, y]==0)
              X_map[x, y] =  1
-             X_map = fun_crawl(x-1, y+0, X, X_map)
-             X_map = fun_crawl(x+1, y+0, X, X_map)
-             X_map = fun_crawl(x+0, y-1, X, X_map)
-             X_map = fun_crawl(x+0, y+1, X, X_map)
+             X_map = fun_crawl_recursive(x-1, y+0, X, X_map)
+             X_map = fun_crawl_recursive(x+1, y+0, X, X_map)
+             X_map = fun_crawl_recursive(x+0, y-1, X, X_map)
+             X_map = fun_crawl_recursive(x+0, y+1, X, X_map)
          end
      end
      return(X_map)
@@ -52,7 +52,7 @@ fun_find_lowest_point_and_basin_sizes = function(fname; part1=true)
         x = mat_coordinates[i, 1]
         y = mat_coordinates[i, 2]
         X_map = zeros(Int, size(X))
-        append!(vec_basin_size, sum(fun_crawl(x, y, X, X_map)))
+        append!(vec_basin_size, sum(fun_crawl_recursive(x, y, X, X_map)))
     end
     if part1==false
         n_product_top_3_basin_sizes = prod(sort!(vec_basin_size)[(end-2):end])
