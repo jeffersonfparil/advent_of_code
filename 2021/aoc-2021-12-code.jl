@@ -1,53 +1,77 @@
+### NOTE: We're assuming no two big caves are directly connected!
+
 fname = "aoc-2021-12-input.txt"
 mat_str_caves = hcat(split.(readlines(fname), "-")...)
 # mat_str_caves = hcat(split.(["dc-end", "HN-start", "start-kj", "dc-start", "dc-HN", "LN-dc", "HN-end", "kj-sa", "kj-HN", "kj-dc"], "-")...)
+# mat_str_caves = hcat(split.(["fs-end", "he-DX", "fs-he", "start-DX", "pj-DX", "end-zg", "zg-sl", "zg-pj", "pj-he", "RW-he", "fs-DX", "pj-RW", "zg-RW", "start-pj", "he-WI", "zg-he", "pj-fs", "start-RW"], "-")...)
 
 vec_caves_list_all = unique(mat_str_caves)
 vec_caves_list_uppercase = vec_caves_list_all[[uppercase(x)==x for x in vec_caves_list_all]]
 vec_caves_list_lowercase = vec_caves_list_all[[uppercase(x)!=x for x in vec_caves_list_all]]
+vec_caves_list_lowercase = vec_caves_list_lowercase[.!in.(vec_caves_list_lowercase, [["start", "end"]])]
 
 idx_starting_caves = collect(1:size(mat_str_caves,2))[sum(mat_str_caves .== "start", dims=1)[1,:] .== 1]
 idx_nonstarting_caves = collect(1:size(mat_str_caves,2))[sum(mat_str_caves .!= "start", dims=1)[1,:] .== 2]
+mat_str_starting_caves = mat_str_caves[:, idx_starting_caves]
 mat_str_nonstarting_caves = mat_str_caves[:, idx_nonstarting_caves]
 
 
-# for i in idx_starting_caves
-i = idx_starting_caves[1]
-vec_vec_path = [[mat_str_caves[mat_str_caves[:,i] .== "start", i][1], mat_str_caves[mat_str_caves[:,i] .!= "start", i][1]]]
-
-
-idx_unused_caves_col = sum((mat_str_nonstarting_caves .== [        vec_vec_path[end][(i-1):i]  for i in 2:length(vec_vec_path[end])]) .|
-                           (mat_str_nonstarting_caves .== [reverse(vec_vec_path[end][(i-1):i]) for i in 2:length(vec_vec_path[end])]), dims=1)[1,:] .< 2
-mat_unused_potential_caves  = mat_str_nonstarting_caves[:, idx_unused_caves_col]
-
-
-fun_caving_recursion = function(vec_vec_path, mat_unused_potential_caves, mat_str_nonstarting_caves)
-    if (vec_vec_path[end][end] != "end") & (sum([count(vec_vec_path[end].==x) for x in vec_caves_list_lowercase] .> 1) == 0)
-        n_counter = 0 ### messing up
-        while (length(mat_unused_potential_caves) > 0) & (n_counter <= length(mat_unused_potential_caves))
-            vec_bool_connected_caves = mat_unused_potential_caves[:,1] .== vec_vec_path[end][end]
-            if sum(vec_bool_connected_caves) > 0
-                vec_vec_path[end] = vcat(vec_vec_path[end], mat_unused_potential_caves[.!vec_bool_connected_caves, 1])
-                println(mat_unused_potential_caves)
-                mat_unused_potential_caves = mat_unused_potential_caves[:,2:end]
-                vec_vec_path, mat_unused_potential_caves = fun_caving_recursion(vec_vec_path,
-                                                                                mat_unused_potential_caves,
-                                                                                mat_str_nonstarting_caves)
-            else
-                n_counter = n_counter + 1
-                mat_unused_potential_caves = hcat(mat_unused_potential_caves[:,2:end], mat_unused_potential_caves[:,1])
-            end
-        end
-    elseif vec_vec_path[end][end] == "end"
-        append!(vec_vec_path, [vec_vec_path[end][1:(end-1)]])
+fun_cave_crawler = function(vec_vec_path, mat_str_nonstarting_caves, vec_caves_list_lowercase; part1=true)
+    bool_have_we_not_reached_the_end_cave = (vec_vec_path[end][end] != "end")
+    if part1
+        bool_do_we_have_at_most_one_lowercase_cave_in_our_path = (sum([count(vec_vec_path[end].==x) for x in vec_caves_list_lowercase] .> 1) == 0)
+        bool_test = (bool_have_we_not_reached_the_end_cave) & (bool_do_we_have_at_most_one_lowercase_cave_in_our_path)
+    else
+        vec_n_lowercase_caves_in_our_path = [count(vec_vec_path[end].==x) for x in vec_caves_list_lowercase]
+        bool_do_we_have_lowercase_caves_appearing_more_than_twice = sum(vec_n_lowercase_caves_in_our_path .> 2) > 0
+        bool_do_we_have_at_most_one_lowercase_cave_apearing_twice = sum(vec_n_lowercase_caves_in_our_path .== 2) <= 1
+        bool_test = (bool_do_we_have_lowercase_caves_appearing_more_than_twice==false) & (bool_do_we_have_at_most_one_lowercase_cave_apearing_twice==true)
     end
-    return(vec_vec_path, mat_unused_potential_caves)
+    # println(vec_vec_path)
+    # println(bool_do_we_have_at_most_one_lowercase_cave_in_our_path)
+    if bool_test
+        vec_idx_connected_caves = Bool.(sum(mat_str_nonstarting_caves .== [vec_vec_path[end][end]], dims=1)[1,:])
+        mat_str_connected_caves = mat_str_nonstarting_caves[:, vec_idx_connected_caves]
+        for j in 1:size(mat_str_connected_caves,2)
+            # j = 1
+            # println("Connected caves:")
+            # println(mat_str_connected_caves)
+            vec_next_caves = mat_str_connected_caves[:, j]
+            vec_idx_bool_connected_caves = vec_next_caves .!= vec_vec_path[end][end]
+            # println(vec_idx_bool_connected_caves)
+            append!(vec_vec_path[end], vec_next_caves[vec_idx_bool_connected_caves])
+            vec_vec_path = fun_cave_crawler(vec_vec_path, mat_str_nonstarting_caves, vec_caves_list_lowercase, part1=part1)
+        end
+        if vec_vec_path[end][end] != "end"
+            vec_vec_path[end] = vec_vec_path[end][1:(end-1)]
+        end
+    elseif bool_have_we_not_reached_the_end_cave == false
+        vec_vec_path = vcat(vec_vec_path, [vec_vec_path[end][1:(end-1)]])
+    else
+        # println("Double small caves!")
+        # println(vec_vec_path)
+        vec_vec_path[end] = vec_vec_path[end][1:(end-1)]
+        # println(vec_vec_path)
+        # println("#########################################")
+    end
+    # println("return")
+    # println("#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    # println("#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    # println("#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    return(vec_vec_path)
 end
 
+part1 = false
+vec_vec_all_paths = []
+for i in idx_starting_caves
+    # i = idx_starting_caves[1]
+    vec_vec_path = [[mat_str_caves[mat_str_caves[:,i] .== "start", i][1], mat_str_caves[mat_str_caves[:,i] .!= "start", i][1]]]
+    X = fun_cave_crawler(vec_vec_path, mat_str_nonstarting_caves, vec_caves_list_lowercase, part1=part1)[1:(end-1)]
+    vec_vec_all_paths = vcat(vec_vec_all_paths, X)
+end
 
-X, Y = fun_caving_recursion(vec_vec_path, mat_unused_potential_caves, mat_str_nonstarting_caves)
-
-
-
-# end
+println("#####################################")
+println("Part 1:")
+println(length(vec_vec_all_paths))
+println("#####################################")
 
