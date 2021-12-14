@@ -55,7 +55,7 @@ fun_fold_once_or_fold_and_read_message = function(fname; part1=true)
     else
         println("#####################################")
         println("Part 2:")
-        println(UnicodePlots.scatterplot(mat_coordinates[:,1], .-mat_coordinates[:,2], width=100))
+        println(UnicodePlots.scatterplot(mat_coordinates[:,1], .-mat_coordinates[:,2], width=100, canvas=HeatmapCanvas))
         println("#####################################")
     end
 end
