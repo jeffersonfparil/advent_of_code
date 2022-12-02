@@ -32,8 +32,6 @@ pub fn day02() -> io::Result<()> {
         // } else if diff == 0 {
         //     total_score += 3
         // }
-
-
         if z[1] == "X" {
             yours = theirs + 2
         } else if z[1] == "Y" {
@@ -43,7 +41,6 @@ pub fn day02() -> io::Result<()> {
             total_score += 6;
             yours = theirs + 1
         }
-
         if yours > 3 {
             yours = yours - 3
         }
